@@ -3,55 +3,1106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My First Prototype</title>
+    <title>BCT - Ballistic Calculator Tool</title>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            max-width: 800px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding-bottom: 80px;
+        }
+
+        .container {
+            max-width: 600px;
             margin: 0 auto;
             padding: 20px;
-            background-color: #f0f0f0;
         }
-        .container {
-            background-color: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+
+        header {
+            background: #1e293b;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
         }
-        button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
+
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            color: #f59e0b;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: #94a3b8;
+            margin-top: 5px;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        .profile-list {
+            background: #1e293b;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .profile-item {
+            padding: 16px 20px;
+            border-bottom: 1px solid #334155;
             cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .profile-item:hover {
+            background: #334155;
+        }
+
+        .profile-item:last-child {
+            border-bottom: none;
+        }
+
+        .profile-item.selected {
+            background: #f59e0b;
+            color: #0f172a;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 16px;
+            background: #f59e0b;
+            color: #0f172a;
+            border: none;
+            border-radius: 12px;
             font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
         }
-        button:hover {
-            background-color: #0056b3;
+
+        .btn:hover {
+            background: #d97706;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
         }
-        #output {
-            margin-top: 20px;
+
+        .btn-secondary {
+            background: #334155;
+            color: #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: #475569;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            color: #cbd5e1;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px 16px;
+            background: #1e293b;
+            border: 2px solid #334155;
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 16px;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #f59e0b;
+        }
+
+        .card {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .result-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #f59e0b;
+            margin: 10px 0;
+        }
+
+        .result-label {
+            font-size: 14px;
+            color: #94a3b8;
+            margin-bottom: 5px;
+        }
+
+        .result-subvalue {
+            font-size: 18px;
+            color: #cbd5e1;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .nav-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #1e293b;
+            border-top: 1px solid #334155;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
+        }
+
+        .nav-item {
+            flex: 1;
+            text-align: center;
             padding: 10px;
-            background-color: #f8f9fa;
-            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #94a3b8;
+        }
+
+        .nav-item.active {
+            color: #f59e0b;
+        }
+
+        .nav-icon {
+            font-size: 24px;
+            margin-bottom: 4px;
+        }
+
+        .nav-label {
+            font-size: 12px;
+        }
+
+        .trajectory-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        .trajectory-table th {
+            background: #334155;
+            padding: 10px 8px;
+            text-align: left;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+
+        .trajectory-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #334155;
+        }
+
+        .trajectory-table tr:hover {
+            background: #334155;
+        }
+
+        .table-container {
+            max-height: 500px;
+            overflow-y: auto;
+            border-radius: 8px;
+        }
+
+        .reticle-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 1;
+            background: #0f172a;
+            border: 2px solid #334155;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .reticle-svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #f59e0b;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-group .btn {
+            flex: 1;
+        }
+
+        .delete-btn {
+            background: #dc2626;
+            color: white;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .delete-btn:hover {
+            background: #b91c1c;
+        }
+
+        .wind-direction-input {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .wind-direction-input input {
+            flex: 1;
+        }
+
+        .wind-clock {
+            width: 60px;
+            height: 60px;
+            border: 2px solid #f59e0b;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: #f59e0b;
+        }
+
+        .info-text {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 5px;
+        }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 30px 0 15px 0;
+            color: #f59e0b;
+        }
+
+        @media (max-width: 640px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
+    <header>
+        <h1>BCT</h1>
+        <div class="subtitle">Ballistic Calculator Tool</div>
+    </header>
+
     <div class="container">
-        <h1>Hello, World!</h1>
-        <p>This is a simple prototype to test our deployment pipeline.</p>
-        <button onclick="showMessage()">Click Me!</button>
-        <div id="output"></div>
+        <!-- Screen 1: Profiles -->
+        <div id="screen-profiles" class="screen active">
+            <div class="profile-list" id="profile-list">
+                <!-- Profiles will be rendered here -->
+            </div>
+            <button class="btn" onclick="openProfileModal()">+ Add Profile</button>
+        </div>
+
+        <!-- Screen 2: Calculator -->
+        <div id="screen-calculator" class="screen">
+            <div class="card">
+                <div class="form-group">
+                    <label>Selected Profile</label>
+                    <select id="selected-profile" onchange="updateSelectedProfile()">
+                        <option value="">Select a profile</option>
+                    </select>
+                </div>
+
+                <div class="section-title">Target</div>
+                <div class="form-group">
+                    <label>Distance (m)</label>
+                    <input type="number" id="distance" value="600" min="0" max="3000">
+                </div>
+
+                <div class="form-group">
+                    <label>Shooting Angle (degrees)</label>
+                    <input type="number" id="shooting-angle" value="0" min="-90" max="90">
+                </div>
+
+                <div class="section-title">Wind</div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Speed (m/s)</label>
+                        <input type="number" id="wind-speed" value="2" min="0" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label>Direction (o'clock)</label>
+                        <input type="number" id="wind-direction" value="3" min="1" max="12" step="1">
+                    </div>
+                </div>
+
+                <div class="section-title">Atmosphere</div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Temperature (°C)</label>
+                        <input type="number" id="temperature" value="15" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label>Pressure (hPa)</label>
+                        <input type="number" id="pressure" value="1013" step="1">
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Humidity (%)</label>
+                        <input type="number" id="humidity" value="50" min="0" max="100">
+                    </div>
+                    <div class="form-group">
+                        <label>Altitude (m)</label>
+                        <input type="number" id="altitude" value="0" step="1">
+                    </div>
+                </div>
+
+                <button class="btn" onclick="calculate()">Calculate</button>
+            </div>
+        </div>
+
+        <!-- Screen 3: Solution -->
+        <div id="screen-solution" class="screen">
+            <div class="card">
+                <div class="result-label">ELEVATION</div>
+                <div class="result-value" id="elevation-mrad">0.0 mrad</div>
+                <div class="result-subvalue" id="elevation-clicks">0 clicks</div>
+            </div>
+
+            <div class="card">
+                <div class="result-label">WINDAGE</div>
+                <div class="result-value" id="windage-mrad">0.0 mrad</div>
+                <div class="result-subvalue" id="windage-clicks">0 clicks</div>
+            </div>
+
+            <div class="card">
+                <div class="result-label">TRAJECTORY DATA</div>
+                <div class="result-subvalue">Drop: <span id="drop-cm">0</span> cm</div>
+                <div class="result-subvalue">Drift: <span id="drift-cm">0</span> cm</div>
+                <div class="result-subvalue">Velocity: <span id="velocity">0</span> m/s</div>
+                <div class="result-subvalue">Energy: <span id="energy">0</span> J</div>
+            </div>
+
+            <button class="btn btn-secondary" onclick="showScreen('screen-calculator')">Back to Calculator</button>
+        </div>
+
+        <!-- Screen 4: Trajectory Table -->
+        <div id="screen-trajectory" class="screen">
+            <div class="card">
+                <h2 style="margin-bottom: 15px; color: #f59e0b;">Trajectory Table</h2>
+                <div class="table-container">
+                    <table class="trajectory-table">
+                        <thead>
+                            <tr>
+                                <th>Dist (m)</th>
+                                <th>Drop (cm)</th>
+                                <th>Elev (mrad)</th>
+                                <th>Wind (cm)</th>
+                                <th>Wind (mrad)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trajectory-table-body">
+                            <!-- Table rows will be generated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Screen 5: Reticle -->
+        <div id="screen-reticle" class="screen">
+            <div class="card">
+                <h2 style="margin-bottom: 15px; color: #f59e0b;">Reticle View</h2>
+                <div class="reticle-container">
+                    <svg class="reticle-svg" id="reticle-svg" viewBox="-10 -10 20 20">
+                        <!-- Reticle will be drawn here -->
+                    </svg>
+                </div>
+                <div style="margin-top: 15px; text-align: center;">
+                    <div class="info-text">Red dot indicates point of impact</div>
+                    <div class="info-text">Mil-Dot reticle (1 mil spacing)</div>
+                </div>
+            </div>
+        </div>
     </div>
 
+    <!-- Profile Modal -->
+    <div id="profile-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">Add/Edit Profile</div>
+            
+            <div class="form-group">
+                <label>Profile Name</label>
+                <input type="text" id="profile-name" placeholder="e.g., 6.5 Creedmoor">
+            </div>
+
+            <div class="form-group">
+                <label>Caliber</label>
+                <input type="text" id="profile-caliber" placeholder="e.g., 6.5mm">
+            </div>
+
+            <div class="form-group">
+                <label>Bullet Type</label>
+                <input type="text" id="profile-bullet-type" placeholder="e.g., HPBT Match">
+            </div>
+
+            <div class="form-group">
+                <label>Bullet Mass</label>
+                <div class="grid-2">
+                    <input type="number" id="profile-bullet-mass" placeholder="140" step="0.1">
+                    <select id="profile-mass-unit">
+                        <option value="gr">grains</option>
+                        <option value="g">grams</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>BC (G1)</label>
+                <input type="number" id="profile-bc" placeholder="0.585" step="0.001">
+            </div>
+
+            <div class="form-group">
+                <label>Muzzle Velocity (m/s)</label>
+                <input type="number" id="profile-velocity" placeholder="820" step="1">
+            </div>
+
+            <div class="form-group">
+                <label>Scope Height (cm)</label>
+                <input type="number" id="profile-scope-height" placeholder="5.0" step="0.1">
+            </div>
+
+            <div class="form-group">
+                <label>Zero Range (m)</label>
+                <input type="number" id="profile-zero-range" placeholder="100" step="1">
+            </div>
+
+            <div class="form-group">
+                <label>Turret Click Value</label>
+                <select id="profile-click-unit">
+                    <option value="0.1MIL">0.1 MIL</option>
+                    <option value="0.05MIL">0.05 MIL</option>
+                    <option value="1/4MOA">1/4 MOA</option>
+                    <option value="1/8MOA">1/8 MOA</option>
+                </select>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="closeProfileModal()">Cancel</button>
+                <button class="btn" onclick="saveProfile()">Save Profile</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation Bar -->
+    <nav class="nav-bar">
+        <div class="nav-item active" onclick="showScreen('screen-profiles')">
+            <div class="nav-icon">📋</div>
+            <div class="nav-label">Profiles</div>
+        </div>
+        <div class="nav-item" onclick="showScreen('screen-calculator')">
+            <div class="nav-icon">🎯</div>
+            <div class="nav-label">Calculator</div>
+        </div>
+        <div class="nav-item" onclick="showScreen('screen-solution')">
+            <div class="nav-icon">📊</div>
+            <div class="nav-label">Solution</div>
+        </div>
+        <div class="nav-item" onclick="showScreen('screen-trajectory')">
+            <div class="nav-icon">📈</div>
+            <div class="nav-label">Table</div>
+        </div>
+        <div class="nav-item" onclick="showScreen('screen-reticle')">
+            <div class="nav-icon">⊕</div>
+            <div class="nav-label">Reticle</div>
+        </div>
+    </nav>
+
     <script>
-        function showMessage() {
-            const output = document.getElementById('output');
-            const now = new Date().toLocaleString();
-            output.innerHTML = `Button clicked at: ${now}`;
+        // Global state
+        let profiles = [];
+        let selectedProfileId = null;
+        let currentResult = null;
+        let currentTrajectory = [];
+
+        // Initialize app
+        function init() {
+            loadProfiles();
+            renderProfiles();
+            updateProfileSelector();
+            
+            // Add sample profiles if empty
+            if (profiles.length === 0) {
+                addSampleProfiles();
+            }
         }
+
+        function addSampleProfiles() {
+            profiles = [
+                {
+                    id: Date.now() + 1,
+                    name: '6.5 Creedmoor',
+                    caliber: '6.5mm',
+                    bulletType: 'HPBT Match',
+                    bulletMass: 140,
+                    massUnit: 'gr',
+                    bcG1: 0.585,
+                    muzzleVelocity: 820,
+                    scopeHeight: 5.0,
+                    zeroRange: 100,
+                    clickUnit: '0.1MIL'
+                },
+                {
+                    id: Date.now() + 2,
+                    name: '.308 Match',
+                    caliber: '.308',
+                    bulletType: 'SMK',
+                    bulletMass: 175,
+                    massUnit: 'gr',
+                    bcG1: 0.505,
+                    muzzleVelocity: 780,
+                    scopeHeight: 5.0,
+                    zeroRange: 100,
+                    clickUnit: '0.1MIL'
+                },
+                {
+                    id: Date.now() + 3,
+                    name: '.223 Trainer',
+                    caliber: '.223',
+                    bulletType: 'HPBT',
+                    bulletMass: 77,
+                    massUnit: 'gr',
+                    bcG1: 0.372,
+                    muzzleVelocity: 840,
+                    scopeHeight: 5.0,
+                    zeroRange: 100,
+                    clickUnit: '0.1MIL'
+                }
+            ];
+            saveProfiles();
+            renderProfiles();
+            updateProfileSelector();
+        }
+
+        // LocalStorage functions
+        function loadProfiles() {
+            const stored = localStorage.getItem('bct-profiles');
+            if (stored) {
+                profiles = JSON.parse(stored);
+            }
+        }
+
+        function saveProfiles() {
+            localStorage.setItem('bct-profiles', JSON.stringify(profiles));
+        }
+
+        // Profile management
+        function renderProfiles() {
+            const list = document.getElementById('profile-list');
+            list.innerHTML = '';
+            
+            profiles.forEach(profile => {
+                const item = document.createElement('div');
+                item.className = 'profile-item' + (profile.id === selectedProfileId ? ' selected' : '');
+                item.innerHTML = `
+                    <div onclick="selectProfile(${profile.id})">${profile.name}</div>
+                    <button class="delete-btn" onclick="deleteProfile(${profile.id}, event)">Delete</button>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function updateProfileSelector() {
+            const select = document.getElementById('selected-profile');
+            select.innerHTML = '<option value="">Select a profile</option>';
+            
+            profiles.forEach(profile => {
+                const option = document.createElement('option');
+                option.value = profile.id;
+                option.textContent = profile.name;
+                if (profile.id === selectedProfileId) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+        }
+
+        function selectProfile(id) {
+            selectedProfileId = id;
+            renderProfiles();
+            updateProfileSelector();
+        }
+
+        function updateSelectedProfile() {
+            const select = document.getElementById('selected-profile');
+            selectedProfileId = parseInt(select.value) || null;
+            renderProfiles();
+        }
+
+        function deleteProfile(id, event) {
+            event.stopPropagation();
+            if (confirm('Delete this profile?')) {
+                profiles = profiles.filter(p => p.id !== id);
+                if (selectedProfileId === id) {
+                    selectedProfileId = null;
+                }
+                saveProfiles();
+                renderProfiles();
+                updateProfileSelector();
+            }
+        }
+
+        // Profile modal
+        function openProfileModal() {
+            document.getElementById('profile-modal').classList.add('active');
+            document.getElementById('profile-name').value = '';
+            document.getElementById('profile-caliber').value = '';
+            document.getElementById('profile-bullet-type').value = '';
+            document.getElementById('profile-bullet-mass').value = '';
+            document.getElementById('profile-bc').value = '';
+            document.getElementById('profile-velocity').value = '';
+            document.getElementById('profile-scope-height').value = '5.0';
+            document.getElementById('profile-zero-range').value = '100';
+        }
+
+        function closeProfileModal() {
+            document.getElementById('profile-modal').classList.remove('active');
+        }
+
+        function saveProfile() {
+            const profile = {
+                id: Date.now(),
+                name: document.getElementById('profile-name').value,
+                caliber: document.getElementById('profile-caliber').value,
+                bulletType: document.getElementById('profile-bullet-type').value,
+                bulletMass: parseFloat(document.getElementById('profile-bullet-mass').value),
+                massUnit: document.getElementById('profile-mass-unit').value,
+                bcG1: parseFloat(document.getElementById('profile-bc').value),
+                muzzleVelocity: parseFloat(document.getElementById('profile-velocity').value),
+                scopeHeight: parseFloat(document.getElementById('profile-scope-height').value),
+                zeroRange: parseFloat(document.getElementById('profile-zero-range').value),
+                clickUnit: document.getElementById('profile-click-unit').value
+            };
+
+            if (!profile.name || !profile.bcG1 || !profile.muzzleVelocity) {
+                alert('Please fill in all required fields');
+                return;
+            }
+
+            profiles.push(profile);
+            saveProfiles();
+            renderProfiles();
+            updateProfileSelector();
+            closeProfileModal();
+        }
+
+        // Navigation
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+            
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            const navItems = document.querySelectorAll('.nav-item');
+            if (screenId === 'screen-profiles') navItems[0].classList.add('active');
+            if (screenId === 'screen-calculator') navItems[1].classList.add('active');
+            if (screenId === 'screen-solution') navItems[2].classList.add('active');
+            if (screenId === 'screen-trajectory') navItems[3].classList.add('active');
+            if (screenId === 'screen-reticle') navItems[4].classList.add('active');
+        }
+
+        // Ballistic calculations
+        function calculate() {
+            if (!selectedProfileId) {
+                alert('Please select a profile first');
+                return;
+            }
+
+            const profile = profiles.find(p => p.id === selectedProfileId);
+            const distance = parseFloat(document.getElementById('distance').value);
+            const shootingAngle = parseFloat(document.getElementById('shooting-angle').value);
+            const windSpeed = parseFloat(document.getElementById('wind-speed').value);
+            const windDirection = parseFloat(document.getElementById('wind-direction').value);
+            const temperature = parseFloat(document.getElementById('temperature').value);
+            const pressure = parseFloat(document.getElementById('pressure').value);
+            const humidity = parseFloat(document.getElementById('humidity').value);
+            const altitude = parseFloat(document.getElementById('altitude').value);
+
+            // Calculate air density
+            const airDensity = calculateAirDensity(temperature, pressure, humidity, altitude);
+            
+            // Calculate trajectory
+            currentTrajectory = calculateTrajectory(profile, airDensity, windSpeed, windDirection);
+            
+            // Find result at target distance
+            const targetPoint = findTrajectoryPoint(currentTrajectory, distance);
+            
+            if (targetPoint) {
+                currentResult = {
+                    elevationMrad: targetPoint.elevationMrad,
+                    elevationClicks: calculateClicks(targetPoint.elevationMrad, profile.clickUnit),
+                    windageMrad: targetPoint.windMrad,
+                    windageClicks: calculateClicks(targetPoint.windMrad, profile.clickUnit),
+                    dropCm: targetPoint.dropCm,
+                    driftCm: targetPoint.windDriftCm,
+                    velocity: targetPoint.velocity,
+                    energy: targetPoint.energy
+                };
+
+                displayResults();
+                generateTrajectoryTable();
+                drawReticle();
+                showScreen('screen-solution');
+            }
+        }
+
+        function calculateAirDensity(temp, pressure, humidity, altitude) {
+            const R = 287.05;
+            const tempK = temp + 273.15;
+            const density = (pressure * 100) / (R * tempK);
+            const altitudeFactor = Math.exp(-altitude / 8500);
+            return density * altitudeFactor * (1 - 0.0001 * humidity);
+        }
+
+        function calculateTrajectory(profile, airDensity, windSpeed, windDirection) {
+            const trajectory = [];
+            const g = 9.81;
+            const dt = 0.001;
+            
+            // Convert bullet mass to kg
+            let massKg = profile.bulletMass;
+            if (profile.massUnit === 'gr') {
+                massKg = massKg * 0.06479891;
+            }
+            massKg = massKg / 1000;
+
+            // Calculate bore angle for zeroing
+            const boreAngle = calculateBoreAngle(profile, airDensity);
+            
+            // Initial conditions
+            let vx = profile.muzzleVelocity * Math.cos(boreAngle);
+            let vy = profile.muzzleVelocity * Math.sin(boreAngle);
+            let x = 0;
+            let y = -profile.scopeHeight / 100;
+            let t = 0;
+
+            // Wind components
+            const windAngle = (windDirection - 3) * Math.PI / 6;
+            const windX = windSpeed * Math.sin(windAngle);
+            const windZ = windSpeed * Math.cos(windAngle);
+            let z = 0;
+            let vz = 0;
+
+            const maxDistance = 3000;
+            const step = 25;
+            let nextRecord = 0;
+
+            while (x < maxDistance && y > -50) {
+                const v = Math.sqrt(vx*vx + vy*vy + vz*vz);
+                const dragCoeff = getDragG1(v);
+                const area = Math.PI * Math.pow(profile.caliber / 2000, 2);
+                const dragForce = 0.5 * airDensity * v * v * dragCoeff * area;
+                
+                const ax = -(dragForce / massKg) * (vx / v) - (windX * 0.1);
+                const ay = -g - (dragForce / massKg) * (vy / v);
+                const az = -(dragForce / massKg) * (vz / v) - (windZ * 0.1);
+
+                // RK4 integration
+                vx += ax * dt;
+                vy += ay * dt;
+                vz += az * dt;
+                x += vx * dt;
+                y += vy * dt;
+                z += vz * dt;
+                t += dt;
+
+                if (x >= nextRecord) {
+                    const energy = 0.5 * massKg * v * v;
+                    if (energy >= 100) {
+                        const dropCm = -y * 100;
+                        const driftCm = z * 100;
+                        const elevationMrad = Math.atan2(y, x) * 1000;
+                        const windMrad = Math.atan2(z, x) * 1000;
+                        
+                        trajectory.push({
+                            distance: Math.round(x),
+                            dropCm: Math.round(dropCm * 10) / 10,
+                            elevationMrad: Math.round(elevationMrad * 100) / 100,
+                            windDriftCm: Math.round(driftCm * 10) / 10,
+                            windMrad: Math.round(windMrad * 100) / 100,
+                            velocity: Math.round(v),
+                            energy: Math.round(energy)
+                        });
+                    }
+                    nextRecord += step;
+                }
+            }
+
+            return trajectory;
+        }
+
+        function calculateBoreAngle(profile, airDensity) {
+            // Simple binary search for bore angle
+            let low = -0.01;
+            let high = 0.1;
+            const targetDist = profile.zeroRange;
+            const tolerance = 0.001;
+
+            for (let i = 0; i < 20; i++) {
+                const mid = (low + high) / 2;
+                const impact = simulateShot(profile, mid, airDensity, 0, 0);
+                
+                if (Math.abs(impact.distance - targetDist) < 1) {
+                    if (Math.abs(impact.drop) < tolerance) return mid;
+                    if (impact.drop > 0) low = mid;
+                    else high = mid;
+                }
+            }
+            return (low + high) / 2;
+        }
+
+        function simulateShot(profile, angle, airDensity, windX, windZ) {
+            const g = 9.81;
+            const dt = 0.001;
+            let massKg = profile.bulletMass;
+            if (profile.massUnit === 'gr') massKg *= 0.06479891;
+            massKg /= 1000;
+
+            let vx = profile.muzzleVelocity * Math.cos(angle);
+            let vy = profile.muzzleVelocity * Math.sin(angle);
+            let x = 0, y = -profile.scopeHeight / 100;
+
+            while (x < profile.zeroRange + 10 && y > -10) {
+                const v = Math.sqrt(vx*vx + vy*vy);
+                const dragCoeff = getDragG1(v);
+                const area = Math.PI * Math.pow(profile.caliber / 2000, 2);
+                const dragForce = 0.5 * airDensity * v * v * dragCoeff * area;
+                
+                const ax = -(dragForce / massKg) * (vx / v);
+                const ay = -g - (dragForce / massKg) * (vy / v);
+
+                vx += ax * dt;
+                vy += ay * dt;
+                x += vx * dt;
+                y += vy * dt;
+
+                if (x >= profile.zeroRange) {
+                    return { distance: x, drop: y };
+                }
+            }
+            return { distance: x, drop: y };
+        }
+
+        function getDragG1(velocity) {
+            // Simplified G1 drag model
+            const mach = velocity / 340;
+            if (mach < 0.8) return 0.3;
+            if (mach < 1.2) return 0.3 + (mach - 0.8) * 1.0;
+            if (mach < 2.0) return 0.7 - (mach - 1.2) * 0.2;
+            return 0.5;
+        }
+
+        function findTrajectoryPoint(trajectory, distance) {
+            if (trajectory.length === 0) return null;
+            
+            for (let i = 0; i < trajectory.length - 1; i++) {
+                if (trajectory[i].distance <= distance && trajectory[i+1].distance >= distance) {
+                    const t = (distance - trajectory[i].distance) / (trajectory[i+1].distance - trajectory[i].distance);
+                    return {
+                        dropCm: trajectory[i].dropCm + t * (trajectory[i+1].dropCm - trajectory[i].dropCm),
+                        elevationMrad: trajectory[i].elevationMrad + t * (trajectory[i+1].elevationMrad - trajectory[i].elevationMrad),
+                        windDriftCm: trajectory[i].windDriftCm + t * (trajectory[i+1].windDriftCm - trajectory[i].windDriftCm),
+                        windMrad: trajectory[i].windMrad + t * (trajectory[i+1].windMrad - trajectory[i].windMrad),
+                        velocity: trajectory[i].velocity + t * (trajectory[i+1].velocity - trajectory[i].velocity),
+                        energy: trajectory[i].energy + t * (trajectory[i+1].energy - trajectory[i].energy)
+                    };
+                }
+            }
+            return trajectory[trajectory.length - 1];
+        }
+
+        function calculateClicks(mrad, clickUnit) {
+            let clickValue;
+            switch(clickUnit) {
+                case '0.1MIL': clickValue = 0.1; break;
+                case '0.05MIL': clickValue = 0.05; break;
+                case '1/4MOA': clickValue = 0.291; break;
+                case '1/8MOA': clickValue = 0.145; break;
+                default: clickValue = 0.1;
+            }
+            return Math.round(mrad / clickValue);
+        }
+
+        function displayResults() {
+            if (!currentResult) return;
+
+            document.getElementById('elevation-mrad').textContent = currentResult.elevationMrad.toFixed(2) + ' mrad';
+            document.getElementById('elevation-clicks').textContent = currentResult.elevationClicks + ' clicks';
+            document.getElementById('windage-mrad').textContent = currentResult.windageMrad.toFixed(2) + ' mrad';
+            document.getElementById('windage-clicks').textContent = currentResult.windageClicks + ' clicks';
+            document.getElementById('drop-cm').textContent = currentResult.dropCm.toFixed(1);
+            document.getElementById('drift-cm').textContent = currentResult.driftCm.toFixed(1);
+            document.getElementById('velocity').textContent = currentResult.velocity.toFixed(0);
+            document.getElementById('energy').textContent = currentResult.energy.toFixed(0);
+        }
+
+        function generateTrajectoryTable() {
+            const tbody = document.getElementById('trajectory-table-body');
+            tbody.innerHTML = '';
+
+            currentTrajectory.forEach(point => {
+                const profile = profiles.find(p => p.id === selectedProfileId);
+                const elevClicks = calculateClicks(point.elevationMrad, profile.clickUnit);
+                const windClicks = calculateClicks(point.windMrad, profile.clickUnit);
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${point.distance}</td>
+                    <td>${point.dropCm.toFixed(1)}</td>
+                    <td>${point.elevationMrad.toFixed(2)}</td>
+                    <td>${point.windDriftCm.toFixed(1)}</td>
+                    <td>${point.windMrad.toFixed(2)}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function drawReticle() {
+            const svg = document.getElementById('reticle-svg');
+            svg.innerHTML = '';
+
+            // Draw crosshairs
+            const crosshair = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            crosshair.setAttribute('stroke', '#cbd5e1');
+            crosshair.setAttribute('stroke-width', '0.05');
+
+            // Vertical line
+            const vLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            vLine.setAttribute('x1', '0');
+            vLine.setAttribute('y1', '-10');
+            vLine.setAttribute('x2', '0');
+            vLine.setAttribute('y2', '10');
+            crosshair.appendChild(vLine);
+
+            // Horizontal line
+            const hLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            hLine.setAttribute('x1', '-10');
+            hLine.setAttribute('y1', '0');
+            hLine.setAttribute('x2', '10');
+            hLine.setAttribute('y2', '0');
+            crosshair.appendChild(hLine);
+
+            // Draw mil dots
+            for (let i = -10; i <= 10; i++) {
+                if (i === 0) continue;
+                // Vertical dots
+                const vDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                vDot.setAttribute('cx', '0');
+                vDot.setAttribute('cy', i.toString());
+                vDot.setAttribute('r', '0.15');
+                vDot.setAttribute('fill', '#cbd5e1');
+                crosshair.appendChild(vDot);
+
+                // Horizontal dots
+                const hDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                hDot.setAttribute('cx', i.toString());
+                hDot.setAttribute('cy', '0');
+                hDot.setAttribute('r', '0.15');
+                hDot.setAttribute('fill', '#cbd5e1');
+                crosshair.appendChild(hDot);
+            }
+
+            svg.appendChild(crosshair);
+
+            // Draw impact point
+            if (currentResult) {
+                const impact = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                impact.setAttribute('cx', currentResult.windageMrad.toString());
+                impact.setAttribute('cy', (-currentResult.elevationMrad).toString());
+                impact.setAttribute('r', '0.3');
+                impact.setAttribute('fill', '#dc2626');
+                impact.setAttribute('stroke', '#fca5a5');
+                impact.setAttribute('stroke-width', '0.1');
+                svg.appendChild(impact);
+
+                // Draw correction line
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', '0');
+                line.setAttribute('y1', '0');
+                line.setAttribute('x2', currentResult.windageMrad.toString());
+                line.setAttribute('y2', (-currentResult.elevationMrad).toString());
+                line.setAttribute('stroke', '#dc2626');
+                line.setAttribute('stroke-width', '0.05');
+                line.setAttribute('stroke-dasharray', '0.2,0.2');
+                svg.insertBefore(line, impact);
+            }
+        }
+
+        // Initialize on load
+        window.onload = init;
     </script>
 </body>
 </html>
