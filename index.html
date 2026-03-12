@@ -308,6 +308,77 @@
             background: #b91c1c;
         }
 
+        .edit-btn {
+            background: #1d4ed8;
+            color: white;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 6px;
+        }
+
+        .edit-btn:hover {
+            background: #1e40af;
+        }
+
+        .view-btn {
+            background: #0f766e;
+            color: white;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 6px;
+        }
+
+        .view-btn:hover {
+            background: #0d6b63;
+        }
+
+        .profile-actions {
+            display: flex;
+            gap: 0;
+            flex-shrink: 0;
+        }
+
+        .view-field {
+            margin-bottom: 12px;
+        }
+
+        .view-field-label {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-bottom: 2px;
+        }
+
+        .view-field-value {
+            font-size: 16px;
+            color: #e2e8f0;
+        }
+
+        .sticky-profile-bar {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: #1a3a2a;
+            border-bottom: 1px solid #2a5a3a;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #a0c4e8;
+        }
+
+        .sticky-profile-bar select {
+            flex: 1;
+            margin: 0;
+        }
+
         .wind-direction-input {
             display: flex;
             align-items: center;
@@ -367,18 +438,17 @@
 
         <!-- Screen 2: Calculator -->
         <div id="screen-calculator" class="screen">
+            <div class="sticky-profile-bar">
+                <label>Profile</label>
+                <select id="selected-profile" onchange="updateSelectedProfile()">
+                    <option value="">Select a profile</option>
+                </select>
+            </div>
             <div class="card">
-                <div class="form-group">
-                    <label>Selected Profile</label>
-                    <select id="selected-profile" onchange="updateSelectedProfile()">
-                        <option value="">Select a profile</option>
-                    </select>
-                </div>
-
                 <div class="section-title">Target</div>
                 <div class="form-group">
                     <label>Distance (m)</label>
-                    <input type="number" id="distance" value="600" min="0" max="3000">
+                    <input type="number" id="distance" value="400" min="0" max="3000">
                 </div>
 
                 <div class="form-group">
@@ -390,11 +460,11 @@
                 <div class="grid-2">
                     <div class="form-group">
                         <label>Speed (m/s)</label>
-                        <input type="number" id="wind-speed" value="2" min="0" step="0.1">
+                        <input type="number" id="wind-speed" value="0" min="0" step="1">
                     </div>
                     <div class="form-group">
                         <label>Direction (o'clock)</label>
-                        <input type="number" id="wind-direction" value="3" min="1" max="12" step="1">
+                        <input type="number" id="wind-direction" value="12" step="1" oninput="wrapWindDirection(this)">
                     </div>
                 </div>
 
@@ -463,6 +533,8 @@
                                 <th>Elev (mrad)</th>
                                 <th>Wind (cm)</th>
                                 <th>Wind (mrad)</th>
+                                <th>Vel (m/s)</th>
+                                <th>Energy (J)</th>
                             </tr>
                         </thead>
                         <tbody id="trajectory-table-body">
@@ -490,11 +562,54 @@
         </div>
     </div>
 
+    <!-- Profile View Modal -->
+    <div id="profile-view-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header" id="view-profile-name">Profile</div>
+            <div class="view-field">
+                <div class="view-field-label">Caliber</div>
+                <div class="view-field-value" id="view-caliber">—</div>
+            </div>
+            <div class="view-field">
+                <div class="view-field-label">Bullet Type</div>
+                <div class="view-field-value" id="view-bullet-type">—</div>
+            </div>
+            <div class="view-field">
+                <div class="view-field-label">Bullet Mass</div>
+                <div class="view-field-value" id="view-bullet-mass">—</div>
+            </div>
+            <div class="view-field">
+                <div class="view-field-label">BC (G1)</div>
+                <div class="view-field-value" id="view-bc">—</div>
+            </div>
+            <div class="view-field">
+                <div class="view-field-label">Muzzle Velocity</div>
+                <div class="view-field-value" id="view-velocity">—</div>
+            </div>
+            <div class="view-field">
+                <div class="view-field-label">Scope Height</div>
+                <div class="view-field-value" id="view-scope-height">—</div>
+            </div>
+            <div class="view-field">
+                <div class="view-field-label">Zero Range</div>
+                <div class="view-field-value" id="view-zero-range">—</div>
+            </div>
+            <div class="view-field">
+                <div class="view-field-label">Turret Click Value</div>
+                <div class="view-field-value" id="view-click-unit">—</div>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="closeViewModal()">Close</button>
+                <button class="btn" id="view-edit-btn" onclick="">Edit</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Profile Modal -->
     <div id="profile-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">Add/Edit Profile</div>
-            
+
             <div class="form-group">
                 <label>Profile Name</label>
                 <input type="text" id="profile-name" placeholder="e.g., 6.5 Creedmoor">
@@ -583,19 +698,210 @@
     </nav>
 
     <script>
+        // ============================================
         // Global state
+        // ============================================
         let profiles = [];
         let selectedProfileId = null;
         let currentResult = null;
         let currentTrajectory = [];
+        let editingProfileId = null;
 
-        // Initialize app
+        // ============================================
+        // Ballistic Engine (G1 Point Mass Model)
+        // ============================================
+
+        const GRAVITY = 9.80665;
+        const R_AIR = 287.05;
+        const BC_CONVERSION = 703.07;  // 1 lb/in² = 703.07 kg/m²
+        const SPIN_DRIFT_K = 0.00012;
+        const MAX_DISTANCE = 3000;
+        const MIN_ENERGY = 100;
+        const TRAJECTORY_STEP = 25;
+
+        const G1_TABLE = [
+            { mach: 0.00, cd: 0.2629 },
+            { mach: 0.50, cd: 0.2032 },
+            { mach: 0.70, cd: 0.2166 },
+            { mach: 0.90, cd: 0.3125 },
+            { mach: 1.00, cd: 0.4310 },
+            { mach: 1.10, cd: 0.4950 },
+            { mach: 1.20, cd: 0.4820 },
+            { mach: 1.30, cd: 0.4640 },
+            { mach: 1.40, cd: 0.4440 },
+            { mach: 1.50, cd: 0.4240 },
+            { mach: 1.60, cd: 0.4040 },
+            { mach: 1.80, cd: 0.3680 },
+            { mach: 2.00, cd: 0.3350 },
+            { mach: 2.50, cd: 0.2850 },
+            { mach: 3.00, cd: 0.2490 },
+        ];
+
+        function airDensity(env) {
+            const T = env.temperature + 273.15;
+            const p = env.pressure * 100;
+            return p / (R_AIR * T);
+        }
+
+        function speedOfSound(tempC) {
+            return 331.3 + 0.606 * tempC;
+        }
+
+        function bulletMassKg(profile) {
+            return profile.massUnit === 'gr'
+                ? profile.bulletMass * 0.00006479891
+                : profile.bulletMass / 1000;
+        }
+
+        function interpolateDrag(mach) {
+            if (mach <= G1_TABLE[0].mach) return G1_TABLE[0].cd;
+            for (let i = 0; i < G1_TABLE.length - 1; i++) {
+                const a = G1_TABLE[i], b = G1_TABLE[i + 1];
+                if (mach >= a.mach && mach <= b.mach) {
+                    const t = (mach - a.mach) / (b.mach - a.mach);
+                    return a.cd + t * (b.cd - a.cd);
+                }
+            }
+            return G1_TABLE[G1_TABLE.length - 1].cd;
+        }
+
+        function windCrossComponent(wind) {
+            return wind.speed * Math.sin((wind.directionClock / 6) * Math.PI);
+        }
+
+        function dragAcceleration(velocity, bc, mach, rho) {
+            const cd = interpolateDrag(mach);
+            const bcSI = bc * BC_CONVERSION;
+            return 0.5 * rho * cd * velocity * velocity / bcSI;
+        }
+
+        function rk4Step(state, dt, deriv) {
+            const k1 = deriv(state);
+            const s2 = state.map((v, i) => v + k1[i] * dt / 2);
+            const k2 = deriv(s2);
+            const s3 = state.map((v, i) => v + k2[i] * dt / 2);
+            const k3 = deriv(s3);
+            const s4 = state.map((v, i) => v + k3[i] * dt);
+            const k4 = deriv(s4);
+            return state.map((v, i) => v + (dt / 6) * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]));
+        }
+
+        function simulateHeight(profile, env, angle, targetDist) {
+            const dt = 0.001;
+            const rho = airDensity(env);
+            const sound = speedOfSound(env.temperature);
+            let state = [
+                0,
+                -profile.scopeHeight / 1000,
+                profile.muzzleVelocity * Math.cos(angle),
+                profile.muzzleVelocity * Math.sin(angle),
+            ];
+            while (state[0] < targetDist) {
+                state = rk4Step(state, dt, (s) => {
+                    const vx = s[2], vy = s[3];
+                    const v = Math.sqrt(vx * vx + vy * vy);
+                    if (v < 1) return [vx, vy, 0, -GRAVITY];
+                    const drag = dragAcceleration(v, profile.bcG1, v / sound, rho);
+                    return [vx, vy, -drag * vx / v, -GRAVITY - drag * vy / v];
+                });
+            }
+            return state[1];
+        }
+
+        function solveZeroAngle(profile, env) {
+            let low = -0.02, high = 0.02;
+            for (let i = 0; i < 30; i++) {
+                const mid = (low + high) / 2;
+                if (simulateHeight(profile, env, mid, profile.zeroRange) > 0) high = mid;
+                else low = mid;
+            }
+            return (low + high) / 2;
+        }
+
+        function generateTrajectory(profile, env, wind) {
+            const dt = 0.002;
+            const rho = airDensity(env);
+            const sound = speedOfSound(env.temperature);
+            const massKg = bulletMassKg(profile);
+            const zeroAngle = solveZeroAngle(profile, env);
+            const windCross = windCrossComponent(wind);
+
+            let state = [
+                0,
+                -profile.scopeHeight / 1000,
+                profile.muzzleVelocity * Math.cos(zeroAngle),
+                profile.muzzleVelocity * Math.sin(zeroAngle),
+            ];
+            let tof = 0, nextSample = TRAJECTORY_STEP;
+            const table = [];
+            let prevState = state, prevTof = 0;
+
+            while (state[0] < MAX_DISTANCE) {
+                prevState = state;
+                prevTof = tof;
+                state = rk4Step(state, dt, (s) => {
+                    const vx = s[2], vy = s[3];
+                    const v = Math.sqrt(vx * vx + vy * vy);
+                    if (v < 1) return [vx, vy, 0, -GRAVITY];
+                    const drag = dragAcceleration(v, profile.bcG1, v / sound, rho);
+                    return [vx, vy, -drag * vx / v, -GRAVITY - drag * vy / v];
+                });
+                tof += dt;
+
+                while (state[0] >= nextSample && nextSample < MAX_DISTANCE) {
+                    const t = (nextSample - prevState[0]) / (state[0] - prevState[0]);
+                    const ix = nextSample;
+                    const iy = prevState[1] + t * (state[1] - prevState[1]);
+                    const ivx = prevState[2] + t * (state[2] - prevState[2]);
+                    const ivy = prevState[3] + t * (state[3] - prevState[3]);
+                    const itof = prevTof + t * (tof - prevTof);
+
+                    const v = Math.sqrt(ivx * ivx + ivy * ivy);
+                    const energy = 0.5 * massKg * v * v;
+                    if (energy < MIN_ENERGY) break;
+
+                    const lagDrift = windCross * (itof - ix / profile.muzzleVelocity);
+                    const spinDrift = SPIN_DRIFT_K * itof * itof;
+                    const totalDrift = lagDrift + spinDrift;
+
+                    const elevMrad = Math.atan(-iy / ix) * 1000;
+                    const windMrad = Math.atan(totalDrift / ix) * 1000;
+
+                    table.push({
+                        distance: ix,
+                        dropCm: iy * 100,
+                        elevationMrad: elevMrad,
+                        elevationClicks: clicksFromAngle(elevMrad, profile.clickUnit),
+                        windDriftCm: totalDrift * 100,
+                        windMrad,
+                        windClicks: clicksFromAngle(windMrad, profile.clickUnit),
+                        velocity: v,
+                        energy,
+                    });
+                    nextSample += TRAJECTORY_STEP;
+                }
+            }
+            return table;
+        }
+
+        function clicksFromAngle(angleMrad, unit) {
+            switch (unit) {
+                case '0.1MIL':  return Math.round(angleMrad / 0.1);
+                case '0.05MIL': return Math.round(angleMrad / 0.05);
+                case '1/4MOA':  return Math.round((angleMrad * 3.438) / 0.25);
+                case '1/8MOA':  return Math.round((angleMrad * 3.438) / 0.125);
+                default:        return Math.round(angleMrad / 0.1);
+            }
+        }
+
+        // ============================================
+        // App initialization
+        // ============================================
+
         function init() {
             loadProfiles();
             renderProfiles();
             updateProfileSelector();
-            
-            // Add sample profiles if empty
             if (profiles.length === 0) {
                 addSampleProfiles();
             }
@@ -648,29 +954,36 @@
             updateProfileSelector();
         }
 
-        // LocalStorage functions
+        // ============================================
+        // LocalStorage
+        // ============================================
+
         function loadProfiles() {
             const stored = localStorage.getItem('bct-profiles');
-            if (stored) {
-                profiles = JSON.parse(stored);
-            }
+            if (stored) profiles = JSON.parse(stored);
         }
 
         function saveProfiles() {
             localStorage.setItem('bct-profiles', JSON.stringify(profiles));
         }
 
+        // ============================================
         // Profile management
+        // ============================================
+
         function renderProfiles() {
             const list = document.getElementById('profile-list');
             list.innerHTML = '';
-            
             profiles.forEach(profile => {
                 const item = document.createElement('div');
                 item.className = 'profile-item' + (profile.id === selectedProfileId ? ' selected' : '');
                 item.innerHTML = `
-                    <div onclick="selectProfile(${profile.id})">${profile.name}</div>
-                    <button class="delete-btn" onclick="deleteProfile(${profile.id}, event)">Delete</button>
+                    <div onclick="selectProfile(${profile.id})" style="flex:1;cursor:pointer">${profile.name}</div>
+                    <div class="profile-actions">
+                        <button class="view-btn" onclick="viewProfile(${profile.id}, event)">View</button>
+                        <button class="edit-btn" onclick="editProfile(${profile.id}, event)">Edit</button>
+                        <button class="delete-btn" onclick="deleteProfile(${profile.id}, event)">Delete</button>
+                    </div>
                 `;
                 list.appendChild(item);
             });
@@ -679,14 +992,11 @@
         function updateProfileSelector() {
             const select = document.getElementById('selected-profile');
             select.innerHTML = '<option value="">Select a profile</option>';
-            
             profiles.forEach(profile => {
                 const option = document.createElement('option');
                 option.value = profile.id;
                 option.textContent = profile.name;
-                if (profile.id === selectedProfileId) {
-                    option.selected = true;
-                }
+                if (profile.id === selectedProfileId) option.selected = true;
                 select.appendChild(option);
             });
         }
@@ -695,6 +1005,7 @@
             selectedProfileId = id;
             renderProfiles();
             updateProfileSelector();
+            showScreen('screen-calculator');
         }
 
         function updateSelectedProfile() {
@@ -707,74 +1018,132 @@
             event.stopPropagation();
             if (confirm('Delete this profile?')) {
                 profiles = profiles.filter(p => p.id !== id);
-                if (selectedProfileId === id) {
-                    selectedProfileId = null;
-                }
+                if (selectedProfileId === id) selectedProfileId = null;
                 saveProfiles();
                 renderProfiles();
                 updateProfileSelector();
             }
         }
 
+        // ============================================
         // Profile modal
-        function openProfileModal() {
-            document.getElementById('profile-modal').classList.add('active');
-            document.getElementById('profile-name').value = '';
-            document.getElementById('profile-caliber').value = '';
-            document.getElementById('profile-bullet-type').value = '';
-            document.getElementById('profile-bullet-mass').value = '';
-            document.getElementById('profile-bc').value = '';
-            document.getElementById('profile-velocity').value = '';
-            document.getElementById('profile-scope-height').value = '5.0';
-            document.getElementById('profile-zero-range').value = '100';
+        // ============================================
+
+        function openProfileModal(profileId) {
+            editingProfileId = profileId || null;
+            const modal = document.getElementById('profile-modal');
+            modal.querySelector('.modal-header').textContent = editingProfileId ? 'Edit Profile' : 'Add Profile';
+
+            if (editingProfileId) {
+                const p = profiles.find(x => x.id === editingProfileId);
+                document.getElementById('profile-name').value         = p.name;
+                document.getElementById('profile-caliber').value      = p.caliber;
+                document.getElementById('profile-bullet-type').value  = p.bulletType;
+                document.getElementById('profile-bullet-mass').value  = p.bulletMass;
+                document.getElementById('profile-mass-unit').value    = p.massUnit;
+                document.getElementById('profile-bc').value           = p.bcG1;
+                document.getElementById('profile-velocity').value     = p.muzzleVelocity;
+                document.getElementById('profile-scope-height').value = p.scopeHeight;
+                document.getElementById('profile-zero-range').value   = p.zeroRange;
+                document.getElementById('profile-click-unit').value   = p.clickUnit;
+            } else {
+                document.getElementById('profile-name').value         = '';
+                document.getElementById('profile-caliber').value      = '';
+                document.getElementById('profile-bullet-type').value  = '';
+                document.getElementById('profile-bullet-mass').value  = '';
+                document.getElementById('profile-bc').value           = '';
+                document.getElementById('profile-velocity').value     = '';
+                document.getElementById('profile-scope-height').value = '5.0';
+                document.getElementById('profile-zero-range').value   = '100';
+            }
+            modal.classList.add('active');
         }
 
         function closeProfileModal() {
             document.getElementById('profile-modal').classList.remove('active');
+            editingProfileId = null;
         }
 
         function saveProfile() {
-            const profile = {
-                id: Date.now(),
-                name: document.getElementById('profile-name').value,
-                caliber: document.getElementById('profile-caliber').value,
-                bulletType: document.getElementById('profile-bullet-type').value,
-                bulletMass: parseFloat(document.getElementById('profile-bullet-mass').value),
-                massUnit: document.getElementById('profile-mass-unit').value,
-                bcG1: parseFloat(document.getElementById('profile-bc').value),
+            const data = {
+                name:          document.getElementById('profile-name').value,
+                caliber:       document.getElementById('profile-caliber').value,
+                bulletType:    document.getElementById('profile-bullet-type').value,
+                bulletMass:    parseFloat(document.getElementById('profile-bullet-mass').value),
+                massUnit:      document.getElementById('profile-mass-unit').value,
+                bcG1:          parseFloat(document.getElementById('profile-bc').value),
                 muzzleVelocity: parseFloat(document.getElementById('profile-velocity').value),
-                scopeHeight: parseFloat(document.getElementById('profile-scope-height').value),
-                zeroRange: parseFloat(document.getElementById('profile-zero-range').value),
-                clickUnit: document.getElementById('profile-click-unit').value
+                scopeHeight:   parseFloat(document.getElementById('profile-scope-height').value),
+                zeroRange:     parseFloat(document.getElementById('profile-zero-range').value),
+                clickUnit:     document.getElementById('profile-click-unit').value
             };
 
-            if (!profile.name || !profile.bcG1 || !profile.muzzleVelocity) {
+            if (!data.name || !data.bcG1 || !data.muzzleVelocity) {
                 alert('Please fill in all required fields');
                 return;
             }
 
-            profiles.push(profile);
+            if (editingProfileId) {
+                const idx = profiles.findIndex(p => p.id === editingProfileId);
+                profiles[idx] = { id: editingProfileId, ...data };
+            } else {
+                profiles.push({ id: Date.now(), ...data });
+            }
+
             saveProfiles();
             renderProfiles();
             updateProfileSelector();
             closeProfileModal();
         }
 
+        function editProfile(id, event) {
+            event.stopPropagation();
+            openProfileModal(id);
+        }
+
+        function viewProfile(id, event) {
+            event.stopPropagation();
+            const p = profiles.find(x => x.id === id);
+            document.getElementById('view-profile-name').textContent  = p.name;
+            document.getElementById('view-caliber').textContent       = p.caliber || '—';
+            document.getElementById('view-bullet-type').textContent   = p.bulletType || '—';
+            document.getElementById('view-bullet-mass').textContent   = `${p.bulletMass} ${p.massUnit}`;
+            document.getElementById('view-bc').textContent            = p.bcG1;
+            document.getElementById('view-velocity').textContent      = `${p.muzzleVelocity} m/s`;
+            document.getElementById('view-scope-height').textContent  = `${p.scopeHeight} cm`;
+            document.getElementById('view-zero-range').textContent    = `${p.zeroRange} m`;
+            document.getElementById('view-click-unit').textContent    = p.clickUnit;
+            document.getElementById('view-edit-btn').onclick = () => {
+                closeViewModal();
+                openProfileModal(id);
+            };
+            document.getElementById('profile-view-modal').classList.add('active');
+        }
+
+        function closeViewModal() {
+            document.getElementById('profile-view-modal').classList.remove('active');
+        }
+
+        // ============================================
         // Navigation
+        // ============================================
+
         function showScreen(screenId) {
             document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
             document.getElementById(screenId).classList.add('active');
-            
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
             const navItems = document.querySelectorAll('.nav-item');
-            if (screenId === 'screen-profiles') navItems[0].classList.add('active');
-            if (screenId === 'screen-calculator') navItems[1].classList.add('active');
-            if (screenId === 'screen-solution') navItems[2].classList.add('active');
-            if (screenId === 'screen-trajectory') navItems[3].classList.add('active');
-            if (screenId === 'screen-reticle') navItems[4].classList.add('active');
+            if (screenId === 'screen-profiles')    navItems[0].classList.add('active');
+            if (screenId === 'screen-calculator')  navItems[1].classList.add('active');
+            if (screenId === 'screen-solution')    navItems[2].classList.add('active');
+            if (screenId === 'screen-trajectory')  navItems[3].classList.add('active');
+            if (screenId === 'screen-reticle')     navItems[4].classList.add('active');
         }
 
-        // Ballistic calculations
+        // ============================================
+        // Calculate
+        // ============================================
+
         function calculate() {
             if (!selectedProfileId) {
                 alert('Please select a profile first');
@@ -782,249 +1151,96 @@
             }
 
             const profile = profiles.find(p => p.id === selectedProfileId);
-            const distance = parseFloat(document.getElementById('distance').value);
+            const distance      = parseFloat(document.getElementById('distance').value);
             const shootingAngle = parseFloat(document.getElementById('shooting-angle').value);
-            const windSpeed = parseFloat(document.getElementById('wind-speed').value);
+            const windSpeed     = parseFloat(document.getElementById('wind-speed').value);
             const windDirection = parseFloat(document.getElementById('wind-direction').value);
-            const temperature = parseFloat(document.getElementById('temperature').value);
-            const pressure = parseFloat(document.getElementById('pressure').value);
-            const humidity = parseFloat(document.getElementById('humidity').value);
-            const altitude = parseFloat(document.getElementById('altitude').value);
+            const temperature   = parseFloat(document.getElementById('temperature').value);
+            const pressure      = parseFloat(document.getElementById('pressure').value);
+            const humidity      = parseFloat(document.getElementById('humidity').value);
+            const altitude      = parseFloat(document.getElementById('altitude').value);
 
-            // Calculate air density
-            const airDensity = calculateAirDensity(temperature, pressure, humidity, altitude);
-            
-            // Calculate trajectory
-            currentTrajectory = calculateTrajectory(profile, airDensity, windSpeed, windDirection);
-            
-            // Find result at target distance
-            const targetPoint = findTrajectoryPoint(currentTrajectory, distance);
-            
-            if (targetPoint) {
-                currentResult = {
-                    elevationMrad: targetPoint.elevationMrad,
-                    elevationClicks: calculateClicks(targetPoint.elevationMrad, profile.clickUnit),
-                    windageMrad: targetPoint.windMrad,
-                    windageClicks: calculateClicks(targetPoint.windMrad, profile.clickUnit),
-                    dropCm: targetPoint.dropCm,
-                    driftCm: targetPoint.windDriftCm,
-                    velocity: targetPoint.velocity,
-                    energy: targetPoint.energy
-                };
+            // scopeHeight stored in cm, engine expects mm
+            const engineProfile = { ...profile, scopeHeight: profile.scopeHeight * 10 };
+            const env  = { temperature, pressure, humidity, altitude };
+            const wind = { speed: windSpeed, directionClock: windDirection };
 
-                displayResults();
-                generateTrajectoryTable();
-                drawReticle();
-                showScreen('screen-solution');
-            }
-        }
+            currentTrajectory = generateTrajectory(engineProfile, env, wind);
 
-        function calculateAirDensity(temp, pressure, humidity, altitude) {
-            const R = 287.05;
-            const tempK = temp + 273.15;
-            const density = (pressure * 100) / (R * tempK);
-            const altitudeFactor = Math.exp(-altitude / 8500);
-            return density * altitudeFactor * (1 - 0.0001 * humidity);
-        }
-
-        function calculateTrajectory(profile, airDensity, windSpeed, windDirection) {
-            const trajectory = [];
-            const g = 9.81;
-            const dt = 0.001;
-            
-            // Convert bullet mass to kg
-            let massKg = profile.bulletMass;
-            if (profile.massUnit === 'gr') {
-                massKg = massKg * 0.06479891;
-            }
-            massKg = massKg / 1000;
-
-            // Calculate bore angle for zeroing
-            const boreAngle = calculateBoreAngle(profile, airDensity);
-            
-            // Initial conditions
-            let vx = profile.muzzleVelocity * Math.cos(boreAngle);
-            let vy = profile.muzzleVelocity * Math.sin(boreAngle);
-            let x = 0;
-            let y = -profile.scopeHeight / 100;
-            let t = 0;
-
-            // Wind components
-            const windAngle = (windDirection - 3) * Math.PI / 6;
-            const windX = windSpeed * Math.sin(windAngle);
-            const windZ = windSpeed * Math.cos(windAngle);
-            let z = 0;
-            let vz = 0;
-
-            const maxDistance = 3000;
-            const step = 25;
-            let nextRecord = 0;
-
-            while (x < maxDistance && y > -50) {
-                const v = Math.sqrt(vx*vx + vy*vy + vz*vz);
-                const dragCoeff = getDragG1(v);
-                const area = Math.PI * Math.pow(profile.caliber / 2000, 2);
-                const dragForce = 0.5 * airDensity * v * v * dragCoeff * area;
-                
-                const ax = -(dragForce / massKg) * (vx / v) - (windX * 0.1);
-                const ay = -g - (dragForce / massKg) * (vy / v);
-                const az = -(dragForce / massKg) * (vz / v) - (windZ * 0.1);
-
-                // RK4 integration
-                vx += ax * dt;
-                vy += ay * dt;
-                vz += az * dt;
-                x += vx * dt;
-                y += vy * dt;
-                z += vz * dt;
-                t += dt;
-
-                if (x >= nextRecord) {
-                    const energy = 0.5 * massKg * v * v;
-                    if (energy >= 100) {
-                        const dropCm = -y * 100;
-                        const driftCm = z * 100;
-                        const elevationMrad = Math.atan2(y, x) * 1000;
-                        const windMrad = Math.atan2(z, x) * 1000;
-                        
-                        trajectory.push({
-                            distance: Math.round(x),
-                            dropCm: Math.round(dropCm * 10) / 10,
-                            elevationMrad: Math.round(elevationMrad * 100) / 100,
-                            windDriftCm: Math.round(driftCm * 10) / 10,
-                            windMrad: Math.round(windMrad * 100) / 100,
-                            velocity: Math.round(v),
-                            energy: Math.round(energy)
-                        });
-                    }
-                    nextRecord += step;
-                }
-            }
-
-            return trajectory;
-        }
-
-        function calculateBoreAngle(profile, airDensity) {
-            // Simple binary search for bore angle
-            let low = -0.01;
-            let high = 0.1;
-            const targetDist = profile.zeroRange;
-            const tolerance = 0.001;
-
-            for (let i = 0; i < 20; i++) {
-                const mid = (low + high) / 2;
-                const impact = simulateShot(profile, mid, airDensity, 0, 0);
-                
-                if (Math.abs(impact.distance - targetDist) < 1) {
-                    if (Math.abs(impact.drop) < tolerance) return mid;
-                    if (impact.drop > 0) low = mid;
-                    else high = mid;
-                }
-            }
-            return (low + high) / 2;
-        }
-
-        function simulateShot(profile, angle, airDensity, windX, windZ) {
-            const g = 9.81;
-            const dt = 0.001;
-            let massKg = profile.bulletMass;
-            if (profile.massUnit === 'gr') massKg *= 0.06479891;
-            massKg /= 1000;
-
-            let vx = profile.muzzleVelocity * Math.cos(angle);
-            let vy = profile.muzzleVelocity * Math.sin(angle);
-            let x = 0, y = -profile.scopeHeight / 100;
-
-            while (x < profile.zeroRange + 10 && y > -10) {
-                const v = Math.sqrt(vx*vx + vy*vy);
-                const dragCoeff = getDragG1(v);
-                const area = Math.PI * Math.pow(profile.caliber / 2000, 2);
-                const dragForce = 0.5 * airDensity * v * v * dragCoeff * area;
-                
-                const ax = -(dragForce / massKg) * (vx / v);
-                const ay = -g - (dragForce / massKg) * (vy / v);
-
-                vx += ax * dt;
-                vy += ay * dt;
-                x += vx * dt;
-                y += vy * dt;
-
-                if (x >= profile.zeroRange) {
-                    return { distance: x, drop: y };
-                }
-            }
-            return { distance: x, drop: y };
-        }
-
-        function getDragG1(velocity) {
-            // Simplified G1 drag model
-            const mach = velocity / 340;
-            if (mach < 0.8) return 0.3;
-            if (mach < 1.2) return 0.3 + (mach - 0.8) * 1.0;
-            if (mach < 2.0) return 0.7 - (mach - 1.2) * 0.2;
-            return 0.5;
-        }
-
-        function findTrajectoryPoint(trajectory, distance) {
-            if (trajectory.length === 0) return null;
-            
-            for (let i = 0; i < trajectory.length - 1; i++) {
-                if (trajectory[i].distance <= distance && trajectory[i+1].distance >= distance) {
-                    const t = (distance - trajectory[i].distance) / (trajectory[i+1].distance - trajectory[i].distance);
-                    return {
-                        dropCm: trajectory[i].dropCm + t * (trajectory[i+1].dropCm - trajectory[i].dropCm),
-                        elevationMrad: trajectory[i].elevationMrad + t * (trajectory[i+1].elevationMrad - trajectory[i].elevationMrad),
-                        windDriftCm: trajectory[i].windDriftCm + t * (trajectory[i+1].windDriftCm - trajectory[i].windDriftCm),
-                        windMrad: trajectory[i].windMrad + t * (trajectory[i+1].windMrad - trajectory[i].windMrad),
-                        velocity: trajectory[i].velocity + t * (trajectory[i+1].velocity - trajectory[i].velocity),
-                        energy: trajectory[i].energy + t * (trajectory[i+1].energy - trajectory[i].energy)
+            // Interpolate at target distance
+            let point = currentTrajectory.length ? currentTrajectory[currentTrajectory.length - 1] : null;
+            for (let i = 0; i < currentTrajectory.length - 1; i++) {
+                if (currentTrajectory[i].distance <= distance && currentTrajectory[i + 1].distance > distance) {
+                    const t = (distance - currentTrajectory[i].distance) / (currentTrajectory[i + 1].distance - currentTrajectory[i].distance);
+                    const a = currentTrajectory[i], b = currentTrajectory[i + 1];
+                    point = {
+                        dropCm:        a.dropCm        + t * (b.dropCm        - a.dropCm),
+                        elevationMrad: a.elevationMrad + t * (b.elevationMrad - a.elevationMrad),
+                        windDriftCm:   a.windDriftCm   + t * (b.windDriftCm   - a.windDriftCm),
+                        windMrad:      a.windMrad      + t * (b.windMrad      - a.windMrad),
+                        velocity:      a.velocity      + t * (b.velocity      - a.velocity),
+                        energy:        a.energy        + t * (b.energy        - a.energy),
                     };
+                    break;
                 }
             }
-            return trajectory[trajectory.length - 1];
+
+            if (!point) {
+                alert('Target beyond effective range');
+                return;
+            }
+
+            // Rifleman's Rule: inclined fire reduces effective gravity component
+            const angleRad = (shootingAngle * Math.PI) / 180;
+            const elevMrad = point.elevationMrad * Math.cos(angleRad);
+            const windMrad = point.windMrad;
+
+            currentResult = {
+                elevationMrad:   elevMrad,
+                elevationClicks: clicksFromAngle(elevMrad, engineProfile.clickUnit),
+                windageMrad:     windMrad,
+                windageClicks:   clicksFromAngle(windMrad, engineProfile.clickUnit),
+                dropCm:          point.dropCm,
+                driftCm:         point.windDriftCm,
+                velocity:        point.velocity,
+                energy:          point.energy,
+            };
+
+            displayResults();
+            generateTrajectoryTable();
+            drawReticle();
+            showScreen('screen-solution');
         }
 
-        function calculateClicks(mrad, clickUnit) {
-            let clickValue;
-            switch(clickUnit) {
-                case '0.1MIL': clickValue = 0.1; break;
-                case '0.05MIL': clickValue = 0.05; break;
-                case '1/4MOA': clickValue = 0.291; break;
-                case '1/8MOA': clickValue = 0.145; break;
-                default: clickValue = 0.1;
-            }
-            return Math.round(mrad / clickValue);
-        }
+        // ============================================
+        // Display functions
+        // ============================================
 
         function displayResults() {
             if (!currentResult) return;
-
-            document.getElementById('elevation-mrad').textContent = currentResult.elevationMrad.toFixed(2) + ' mrad';
+            document.getElementById('elevation-mrad').textContent   = currentResult.elevationMrad.toFixed(2) + ' mrad';
             document.getElementById('elevation-clicks').textContent = currentResult.elevationClicks + ' clicks';
-            document.getElementById('windage-mrad').textContent = currentResult.windageMrad.toFixed(2) + ' mrad';
-            document.getElementById('windage-clicks').textContent = currentResult.windageClicks + ' clicks';
-            document.getElementById('drop-cm').textContent = currentResult.dropCm.toFixed(1);
-            document.getElementById('drift-cm').textContent = currentResult.driftCm.toFixed(1);
-            document.getElementById('velocity').textContent = currentResult.velocity.toFixed(0);
-            document.getElementById('energy').textContent = currentResult.energy.toFixed(0);
+            document.getElementById('windage-mrad').textContent     = currentResult.windageMrad.toFixed(2) + ' mrad';
+            document.getElementById('windage-clicks').textContent   = currentResult.windageClicks + ' clicks';
+            document.getElementById('drop-cm').textContent          = currentResult.dropCm.toFixed(1);
+            document.getElementById('drift-cm').textContent         = currentResult.driftCm.toFixed(1);
+            document.getElementById('velocity').textContent         = currentResult.velocity.toFixed(0);
+            document.getElementById('energy').textContent           = currentResult.energy.toFixed(0);
         }
 
         function generateTrajectoryTable() {
             const tbody = document.getElementById('trajectory-table-body');
             tbody.innerHTML = '';
-
             currentTrajectory.forEach(point => {
-                const profile = profiles.find(p => p.id === selectedProfileId);
-                const elevClicks = calculateClicks(point.elevationMrad, profile.clickUnit);
-                const windClicks = calculateClicks(point.windMrad, profile.clickUnit);
-
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${point.distance}</td>
+                    <td>${point.distance.toFixed(0)}</td>
                     <td>${point.dropCm.toFixed(1)}</td>
                     <td>${point.elevationMrad.toFixed(2)}</td>
                     <td>${point.windDriftCm.toFixed(1)}</td>
                     <td>${point.windMrad.toFixed(2)}</td>
+                    <td>${point.velocity.toFixed(0)}</td>
+                    <td>${point.energy.toFixed(0)}</td>
                 `;
                 tbody.appendChild(row);
             });
@@ -1034,70 +1250,60 @@
             const svg = document.getElementById('reticle-svg');
             svg.innerHTML = '';
 
-            // Draw crosshairs
             const crosshair = document.createElementNS('http://www.w3.org/2000/svg', 'g');
             crosshair.setAttribute('stroke', '#cbd5e1');
             crosshair.setAttribute('stroke-width', '0.05');
 
-            // Vertical line
             const vLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-            vLine.setAttribute('x1', '0');
-            vLine.setAttribute('y1', '-10');
-            vLine.setAttribute('x2', '0');
-            vLine.setAttribute('y2', '10');
+            vLine.setAttribute('x1', '0'); vLine.setAttribute('y1', '-10');
+            vLine.setAttribute('x2', '0'); vLine.setAttribute('y2', '10');
             crosshair.appendChild(vLine);
 
-            // Horizontal line
             const hLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-            hLine.setAttribute('x1', '-10');
-            hLine.setAttribute('y1', '0');
-            hLine.setAttribute('x2', '10');
-            hLine.setAttribute('y2', '0');
+            hLine.setAttribute('x1', '-10'); hLine.setAttribute('y1', '0');
+            hLine.setAttribute('x2', '10');  hLine.setAttribute('y2', '0');
             crosshair.appendChild(hLine);
 
-            // Draw mil dots
             for (let i = -10; i <= 10; i++) {
                 if (i === 0) continue;
-                // Vertical dots
                 const vDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                vDot.setAttribute('cx', '0');
-                vDot.setAttribute('cy', i.toString());
-                vDot.setAttribute('r', '0.15');
-                vDot.setAttribute('fill', '#cbd5e1');
+                vDot.setAttribute('cx', '0'); vDot.setAttribute('cy', i.toString());
+                vDot.setAttribute('r', '0.15'); vDot.setAttribute('fill', '#cbd5e1');
                 crosshair.appendChild(vDot);
 
-                // Horizontal dots
                 const hDot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                hDot.setAttribute('cx', i.toString());
-                hDot.setAttribute('cy', '0');
-                hDot.setAttribute('r', '0.15');
-                hDot.setAttribute('fill', '#cbd5e1');
+                hDot.setAttribute('cx', i.toString()); hDot.setAttribute('cy', '0');
+                hDot.setAttribute('r', '0.15'); hDot.setAttribute('fill', '#cbd5e1');
                 crosshair.appendChild(hDot);
             }
 
             svg.appendChild(crosshair);
 
-            // Draw impact point
             if (currentResult) {
                 const impact = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-                impact.setAttribute('cx', currentResult.windageMrad.toString());
-                impact.setAttribute('cy', (-currentResult.elevationMrad).toString());
+                impact.setAttribute('cx', (-currentResult.windageMrad).toString());
+                impact.setAttribute('cy', currentResult.elevationMrad.toString());
                 impact.setAttribute('r', '0.3');
                 impact.setAttribute('fill', '#dc2626');
                 impact.setAttribute('stroke', '#fca5a5');
                 impact.setAttribute('stroke-width', '0.1');
                 svg.appendChild(impact);
 
-                // Draw correction line
                 const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                line.setAttribute('x1', '0');
-                line.setAttribute('y1', '0');
-                line.setAttribute('x2', currentResult.windageMrad.toString());
-                line.setAttribute('y2', (-currentResult.elevationMrad).toString());
+                line.setAttribute('x1', '0'); line.setAttribute('y1', '0');
+                line.setAttribute('x2', (-currentResult.windageMrad).toString());
+                line.setAttribute('y2', currentResult.elevationMrad.toString());
                 line.setAttribute('stroke', '#dc2626');
                 line.setAttribute('stroke-width', '0.05');
                 line.setAttribute('stroke-dasharray', '0.2,0.2');
                 svg.insertBefore(line, impact);
+            }
+        }
+
+        function wrapWindDirection(input) {
+            let v = parseInt(input.value);
+            if (!isNaN(v)) {
+                input.value = ((v - 1 + 120) % 12) + 1;
             }
         }
 

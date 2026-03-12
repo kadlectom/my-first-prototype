@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>BCT Engine Test</title>
+  <style>
+    body { font-family: monospace; max-width: 900px; margin: 20px auto; background: #1e1e1e; color: #d4d4d4; padding: 20px; }
+    h2 { color: #569cd6; }
+    h3 { color: #9cdcfe; margin-top: 24px; }
+    .pass { color: #4ec9b0; }
+    .fail { color: #f44747; }
+    .info { color: #ce9178; }
+    table { border-collapse: collapse; width: 100%; margin-top: 8px; font-size: 12px; }
+    th { background: #2d2d2d; color: #569cd6; padding: 4px 8px; text-align: right; }
+    th:first-child { text-align: left; }
+    td { padding: 3px 8px; text-align: right; border-bottom: 1px solid #333; }
+    td:first-child { text-align: left; }
+    tr:hover { background: #2a2a2a; }
+    .result-box { background: #2d2d2d; border-left: 3px solid #569cd6; padding: 12px; margin: 8px 0; }
+  </style>
+</head>
+<body>
+<h2>BCT Ballistic Engine — Test</h2>
+<div id="output"></div>
+
+<script>
+// ============================================
+// BCT Ballistic Engine (JS — types stripped)
+// ============================================
+
+const GRAVITY = 9.80665;
+const R_AIR = 287.05;
+const RHO_0 = 1.225;
+const SPIN_DRIFT_K = 0.00012;
+const MAX_DISTANCE = 3000;
+const MIN_ENERGY = 100;
+const TRAJECTORY_STEP = 25;
+
+const G1_TABLE = [
+  { mach: 0.00, cd: 0.2629 },
+  { mach: 0.50, cd: 0.2032 },
+  { mach: 0.70, cd: 0.2166 },
+  { mach: 0.90, cd: 0.3125 },
+  { mach: 1.00, cd: 0.4310 },
+  { mach: 1.10, cd: 0.4950 },
+  { mach: 1.20, cd: 0.4820 },
+  { mach: 1.30, cd: 0.4640 },
+  { mach: 1.40, cd: 0.4440 },
+  { mach: 1.50, cd: 0.4240 },
+  { mach: 1.60, cd: 0.4040 },
+  { mach: 1.80, cd: 0.3680 },
+  { mach: 2.00, cd: 0.3350 },
+  { mach: 2.50, cd: 0.2850 },
+  { mach: 3.00, cd: 0.2490 },
+];
+
+function airDensity(env) {
+  const T = env.temperature + 273.15;
+  const p = env.pressure * 100;
+  return p / (R_AIR * T);
+}
+
+function speedOfSound(tempC) {
+  return 331.3 + 0.606 * tempC;
+}
+
+function bulletMassKg(profile) {
+  return profile.massUnit === "gr"
+    ? profile.bulletMass * 0.00006479891
+    : profile.bulletMass / 1000;
+}
+
+function interpolateDrag(mach) {
+  if (mach <= G1_TABLE[0].mach) return G1_TABLE[0].cd;
+  for (let i = 0; i < G1_TABLE.length - 1; i++) {
+    const a = G1_TABLE[i];
+    const b = G1_TABLE[i + 1];
+    if (mach >= a.mach && mach <= b.mach) {
+      const t = (mach - a.mach) / (b.mach - a.mach);
+      return a.cd + t * (b.cd - a.cd);
+    }
+  }
+  return G1_TABLE[G1_TABLE.length - 1].cd;
+}
+
+function windCrossComponent(wind) {
+  return wind.speed * Math.sin((wind.directionClock / 6) * Math.PI);
+}
+
+const BC_CONVERSION = 703.07;  // 1 lb/in² = 703.07 kg/m²
+
+function dragAcceleration(velocity, bc, mach, rho) {
+  const cd = interpolateDrag(mach);
+  const bcSI = bc * BC_CONVERSION;  // convert lb/in² → kg/m²
+  return 0.5 * rho * cd * velocity * velocity / bcSI;
+}
+
+function rk4Step(state, dt, deriv) {
+  const k1 = deriv(state);
+  const s2 = state.map((v, i) => v + k1[i] * dt / 2);
+  const k2 = deriv(s2);
+  const s3 = state.map((v, i) => v + k2[i] * dt / 2);
+  const k3 = deriv(s3);
+  const s4 = state.map((v, i) => v + k3[i] * dt);
+  const k4 = deriv(s4);
+  return state.map((v, i) => v + (dt / 6) * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]));
+}
+
+function simulateHeight(profile, env, angle, targetDist) {
+  const dt = 0.001;
+  const rho = airDensity(env);
+  const sound = speedOfSound(env.temperature);
+  console.log(`simulateHeight: angle=${(angle*1000).toFixed(3)}mrad target=${targetDist}m rho=${rho.toFixed(4)}`);
+  let state = [
+    0,
+    -profile.scopeHeight / 1000,
+    profile.muzzleVelocity * Math.cos(angle),
+    profile.muzzleVelocity * Math.sin(angle),
+  ];
+  let iters = 0;
+  const MAX_ITERS = 100000;
+  while (state[0] < targetDist) {
+    state = rk4Step(state, dt, (s) => {
+      const vx = s[2], vy = s[3];
+      const v = Math.sqrt(vx * vx + vy * vy);
+      if (v < 1) return [vx, vy, 0, -GRAVITY];
+      const drag = dragAcceleration(v, profile.bcG1, v / sound, rho);
+      return [vx, vy, -drag * vx / v, -GRAVITY - drag * vy / v];
+    });
+    if (++iters >= MAX_ITERS) {
+      console.error(`simulateHeight: MAX_ITERS hit! x=${state[0].toFixed(1)} vx=${state[2].toFixed(1)}`);
+      break;
+    }
+  }
+  console.log(`simulateHeight: done iters=${iters} y=${state[1].toFixed(4)}`);
+  return state[1];
+}
+
+function solveZeroAngle(profile, env) {
+  console.log(`solveZeroAngle: V0=${profile.muzzleVelocity} BC=${profile.bcG1} zeroRange=${profile.zeroRange}`);
+  let low = -0.02, high = 0.02;
+  for (let i = 0; i < 30; i++) {
+    const mid = (low + high) / 2;
+    if (simulateHeight(profile, env, mid, profile.zeroRange) > 0) high = mid;
+    else low = mid;
+  }
+  const result = (low + high) / 2;
+  console.log(`solveZeroAngle: result=${(result*1000).toFixed(4)} mrad`);
+  return result;
+}
+
+function generateTrajectory(profile, env, wind) {
+  console.log(`generateTrajectory: start`);
+  const dt = 0.002;
+  const rho = airDensity(env);
+  const sound = speedOfSound(env.temperature);
+  const massKg = bulletMassKg(profile);
+  console.log(`  massKg=${massKg.toFixed(6)} rho=${rho.toFixed(4)} sound=${sound.toFixed(1)}`);
+  const zeroAngle = solveZeroAngle(profile, env);
+  const windCross = windCrossComponent(wind);
+  console.log(`  windCross=${windCross.toFixed(3)} m/s`);
+
+  let state = [
+    0, -profile.scopeHeight / 1000,
+    profile.muzzleVelocity * Math.cos(zeroAngle),
+    profile.muzzleVelocity * Math.sin(zeroAngle),
+  ];
+
+  let tof = 0, nextSample = TRAJECTORY_STEP;
+  const table = [];
+  let loopIters = 0;
+  const MAX_LOOP = 2000000;
+
+  while (state[0] < MAX_DISTANCE) {
+    state = rk4Step(state, dt, (s) => {
+      const vx = s[2], vy = s[3];
+      const v = Math.sqrt(vx * vx + vy * vy);
+      if (v < 1) return [vx, vy, 0, -GRAVITY];
+      const drag = dragAcceleration(v, profile.bcG1, v / sound, rho);
+      return [vx, vy, -drag * vx / v, -GRAVITY - drag * vy / v];
+    });
+    if (++loopIters % 50000 === 0) {
+      console.log(`  trajectory loop: x=${state[0].toFixed(0)}m vx=${state[2].toFixed(0)} tof=${tof.toFixed(2)}s`);
+    }
+    if (loopIters >= MAX_LOOP) {
+      console.error(`generateTrajectory: MAX_LOOP hit at x=${state[0].toFixed(1)}`);
+      break;
+    }
+
+    tof += dt;
+    const distance = state[0];
+
+    if (distance >= nextSample) {
+      const drop = state[1];
+      const v = Math.sqrt(state[2] ** 2 + state[3] ** 2);
+      const energy = 0.5 * massKg * v * v;
+      if (energy < MIN_ENERGY) break;
+
+      const lagDrift = windCross * (tof - distance / profile.muzzleVelocity);
+      const spinDrift = SPIN_DRIFT_K * tof * tof;
+      const totalDrift = lagDrift + spinDrift;
+
+      const elevMrad = Math.atan(-drop / distance) * 1000;
+      const windMrad = Math.atan(totalDrift / distance) * 1000;
+
+      table.push({
+        distance, dropCm: drop * 100,
+        elevationMrad: elevMrad,
+        elevationClicks: clicksFromAngle(elevMrad, profile.clickUnit),
+        windDriftCm: totalDrift * 100,
+        windMrad,
+        windClicks: clicksFromAngle(windMrad, profile.clickUnit),
+        velocity: v, energy,
+      });
+
+      nextSample += TRAJECTORY_STEP;
+    }
+  }
+  return table;
+}
+
+function calculateShot(profile, env, wind, shot) {
+  const traj = generateTrajectory(profile, env, wind);
+  if (traj.length === 0) return { elevationMrad: 0, elevationClicks: 0, windageMrad: 0, windageClicks: 0, dropCm: 0, driftCm: 0 };
+
+  let point = traj[traj.length - 1];
+  for (let i = 0; i < traj.length - 1; i++) {
+    if (traj[i].distance <= shot.distance && traj[i + 1].distance > shot.distance) {
+      const t = (shot.distance - traj[i].distance) / (traj[i + 1].distance - traj[i].distance);
+      const a = traj[i], b = traj[i + 1];
+      point = {
+        distance: shot.distance,
+        dropCm:        a.dropCm        + t * (b.dropCm        - a.dropCm),
+        elevationMrad: a.elevationMrad + t * (b.elevationMrad - a.elevationMrad),
+        windDriftCm:   a.windDriftCm   + t * (b.windDriftCm   - a.windDriftCm),
+        windMrad:      a.windMrad      + t * (b.windMrad       - a.windMrad),
+        velocity:      a.velocity      + t * (b.velocity       - a.velocity),
+        energy:        a.energy        + t * (b.energy         - a.energy),
+      };
+      break;
+    }
+  }
+
+  const angleRad = (shot.shootingAngle * Math.PI) / 180;
+  const elevMrad = point.elevationMrad * Math.cos(angleRad);
+  const windMrad = point.windMrad;
+
+  return {
+    elevationMrad: elevMrad,
+    elevationClicks: clicksFromAngle(elevMrad, profile.clickUnit),
+    windageMrad: windMrad,
+    windageClicks: clicksFromAngle(windMrad, profile.clickUnit),
+    dropCm: point.dropCm,
+    driftCm: point.windDriftCm,
+  };
+}
+
+function clicksFromAngle(angleMrad, unit) {
+  switch (unit) {
+    case "0.1MIL":  return Math.round(angleMrad / 0.1);
+    case "0.05MIL": return Math.round(angleMrad / 0.05);
+    case "1/4MOA":  return Math.round((angleMrad * 3.438) / 0.25);
+    case "1/8MOA":  return Math.round((angleMrad * 3.438) / 0.125);
+  }
+}
+
+// ============================================
+// TEST CASES
+// ============================================
+
+const out = document.getElementById("output");
+function h3(t) { out.innerHTML += `<h3>${t}</h3>`; }
+function pre(html) { out.innerHTML += `<div class="result-box">${html}</div>`; }
+function assert(label, got, expected, tolerance) {
+  const ok = Math.abs(got - expected) <= tolerance;
+  out.innerHTML += `<div class="${ok ? 'pass' : 'fail'}">${ok ? '✓' : '✗'} ${label}: got <b>${got.toFixed(3)}</b>, expected ~${expected} ±${tolerance}</div>`;
+}
+
+// --- Profile: 6.5 Creedmoor 147gr ELD-M ---
+const profile65cm = {
+  name: "6.5 Creedmoor 147gr",
+  caliber: "6.5mm",
+  bulletType: "ELD-M",
+  bulletMass: 147,
+  massUnit: "gr",
+  bcG1: 0.697,
+  muzzleVelocity: 823,   // m/s (~2700 fps)
+  scopeHeight: 50,       // mm
+  zeroRange: 200,        // m
+  clickUnit: "0.1MIL",
+};
+
+const stdEnv = {
+  temperature: 15,
+  pressure: 1013,
+  humidity: 50,
+  altitude: 0,
+};
+
+const noWind = { speed: 0, directionClock: 3 };
+const wind5ms = { speed: 5, directionClock: 3 };  // 3 o'clock = full right crosswind
+
+// Test 1 — Zero solver
+console.log("=== TEST 1: Zero Solver ===");
+h3("Test 1 — Zero Solver");
+const t0 = performance.now();
+const zeroAngle = solveZeroAngle(profile65cm, stdEnv);
+const t1 = performance.now();
+pre(`Zero angle: <b>${(zeroAngle * 1000).toFixed(3)} mrad</b> (${(zeroAngle * 180 / Math.PI * 60).toFixed(2)} MOA) — solved in ${(t1-t0).toFixed(1)} ms`);
+assert("zero angle near 0", zeroAngle, 0, 0.005);
+
+// Test 2 — calculateShot at 600m, no wind
+console.log("=== TEST 2: calculateShot 600m ===");
+h3("Test 2 — calculateShot 600 m, no wind");
+const t2 = performance.now();
+const shot600 = calculateShot(profile65cm, stdEnv, noWind, { distance: 600, shootingAngle: 0 });
+const t3 = performance.now();
+pre(`Elevation: <b>${shot600.elevationMrad.toFixed(2)} mrad</b> → <b>${shot600.elevationClicks} clicks</b> (0.1 MIL)<br>
+Drop: ${shot600.dropCm.toFixed(1)} cm<br>
+Wind drift: ${shot600.driftCm.toFixed(1)} cm<br>
+Calculated in: ${(t3-t2).toFixed(0)} ms`);
+assert("elevation 600m reasonable (1–4 mrad)", shot600.elevationMrad, 2.5, 1.5);
+assert("calculation time < 500ms", t3 - t2, 0, 500);
+
+// Test 3 — calculateShot at 1000m, 5 m/s crosswind
+console.log("=== TEST 3: calculateShot 1000m ===");
+h3("Test 3 — calculateShot 1000 m, 5 m/s 3 o'clock crosswind");
+const shot1000 = calculateShot(profile65cm, stdEnv, wind5ms, { distance: 1000, shootingAngle: 0 });
+pre(`Elevation: <b>${shot1000.elevationMrad.toFixed(2)} mrad</b> → <b>${shot1000.elevationClicks} clicks</b><br>
+Windage: <b>${shot1000.windageMrad.toFixed(2)} mrad</b> → <b>${shot1000.windageClicks} clicks</b><br>
+Drop: ${shot1000.dropCm.toFixed(1)} cm<br>
+Wind drift: ${shot1000.driftCm.toFixed(1)} cm`);
+assert("elevation 1000m reasonable (3–8 mrad)", shot1000.elevationMrad, 5.5, 2.5);
+assert("windage 1000m > 0 (right drift)", shot1000.windageMrad, 1.5, 1.5);
+
+// Test 4 — Shooting angle correction (20° uphill)
+h3("Test 4 — Shooting angle correction (20° uphill vs flat)");
+const shotFlat = calculateShot(profile65cm, stdEnv, noWind, { distance: 600, shootingAngle: 0 });
+const shotUphill = calculateShot(profile65cm, stdEnv, noWind, { distance: 600, shootingAngle: 20 });
+pre(`Flat elevation: <b>${shotFlat.elevationMrad.toFixed(2)} mrad</b><br>
+20° uphill elevation: <b>${shotUphill.elevationMrad.toFixed(2)} mrad</b><br>
+<span class="info">Uphill should require LESS elevation (Rifleman's Rule: cos 20° ≈ 0.940)</span>`);
+assert("uphill < flat elevation", shotFlat.elevationMrad - shotUphill.elevationMrad, 0.1, 0.2);
+
+// Test 5 — Trajectory table (first 10 rows)
+h3("Test 5 — Trajectory table (first 10 rows, no wind)");
+const t4 = performance.now();
+const traj = generateTrajectory(profile65cm, stdEnv, noWind);
+const t5 = performance.now();
+pre(`Generated <b>${traj.length} points</b> in <b>${(t5-t4).toFixed(0)} ms</b>`);
+assert("trajectory generation < 1000ms", t5 - t4, 0, 1000);
+assert("trajectory has points beyond 500m", traj.filter(p => p.distance >= 500).length, 100, 20);
+
+let tableHtml = `<table><tr>
+  <th>Dist (m)</th><th>Drop (cm)</th>
+  <th>Elev (mrad)</th><th>Clicks</th>
+  <th>Vel (m/s)</th><th>Energy (J)</th>
+</tr>`;
+traj.slice(0, 10).forEach(p => {
+  tableHtml += `<tr>
+    <td>${p.distance.toFixed(0)}</td>
+    <td>${p.dropCm.toFixed(1)}</td>
+    <td>${p.elevationMrad.toFixed(2)}</td>
+    <td>${p.elevationClicks}</td>
+    <td>${p.velocity.toFixed(0)}</td>
+    <td>${p.energy.toFixed(0)}</td>
+  </tr>`;
+});
+tableHtml += "</table>";
+out.innerHTML += tableHtml;
+
+// Test 6 — .308 Win profile
+h3("Test 6 — .308 Win 175gr SMK @ 800 m/s");
+const profile308 = {
+  name: ".308 Win 175gr SMK",
+  caliber: ".308",
+  bulletType: "SMK",
+  bulletMass: 175,
+  massUnit: "gr",
+  bcG1: 0.505,
+  muzzleVelocity: 800,
+  scopeHeight: 50,
+  zeroRange: 100,
+  clickUnit: "1/4MOA",
+};
+const shot308 = calculateShot(profile308, stdEnv, noWind, { distance: 600, shootingAngle: 0 });
+pre(`.308 at 600m — Elevation: <b>${shot308.elevationMrad.toFixed(2)} mrad</b> → <b>${shot308.elevationClicks} clicks (¼ MOA)</b><br>
+Drop: ${shot308.dropCm.toFixed(1)} cm`);
+assert(".308 elevation 600m reasonable (2–5 mrad)", shot308.elevationMrad, 3.5, 1.5);
+
+h3("Summary");
+</script>
+</body>
+</html>
