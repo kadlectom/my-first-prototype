@@ -365,6 +365,29 @@
             color: #e2e8f0;
         }
 
+        .bc-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .bc-row input[type="radio"] {
+            accent-color: #4a9eda;
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .bc-type-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #a0c4e8;
+            width: 24px;
+            flex-shrink: 0;
+        }
+
         .sticky-profile-bar {
             position: sticky;
             top: 0;
@@ -585,8 +608,12 @@
                 <div class="view-field-value" id="view-bullet-mass">—</div>
             </div>
             <div class="view-field">
-                <div class="view-field-label">BC (G1)</div>
-                <div class="view-field-value" id="view-bc">—</div>
+                <div class="view-field-label" id="view-bc-g1-label">BC G1</div>
+                <div class="view-field-value" id="view-bc-g1">—</div>
+            </div>
+            <div class="view-field">
+                <div class="view-field-label" id="view-bc-g7-label">BC G7</div>
+                <div class="view-field-value" id="view-bc-g7">—</div>
             </div>
             <div class="view-field">
                 <div class="view-field-label">Muzzle Velocity</div>
@@ -643,8 +670,17 @@
             </div>
 
             <div class="form-group">
-                <label>BC (G1)</label>
-                <input type="number" id="profile-bc" placeholder="0.585" step="0.001">
+                <label>Ballistic Coefficient <span style="font-size:11px;color:#a0c4e8">(★ = preferred)</span></label>
+                <div class="bc-row">
+                    <input type="radio" name="preferred-bc" id="prefer-g1" value="G1">
+                    <label for="prefer-g1" class="bc-type-label">G1</label>
+                    <input type="number" id="profile-bc-g1" placeholder="0.585" step="0.001">
+                </div>
+                <div class="bc-row">
+                    <input type="radio" name="preferred-bc" id="prefer-g7" value="G7">
+                    <label for="prefer-g7" class="bc-type-label">G7</label>
+                    <input type="number" id="profile-bc-g7" placeholder="0.300" step="0.001">
+                </div>
             </div>
 
             <div class="form-group">
@@ -743,6 +779,24 @@
             { mach: 3.00, cd: 0.2490 },
         ];
 
+        const G7_TABLE = [
+            { mach: 0.00, cd: 0.1198 },
+            { mach: 0.50, cd: 0.1197 },
+            { mach: 0.70, cd: 0.1196 },
+            { mach: 0.90, cd: 0.1339 },
+            { mach: 1.00, cd: 0.1806 },
+            { mach: 1.10, cd: 0.2083 },
+            { mach: 1.20, cd: 0.2051 },
+            { mach: 1.30, cd: 0.1991 },
+            { mach: 1.40, cd: 0.1936 },
+            { mach: 1.50, cd: 0.1883 },
+            { mach: 1.60, cd: 0.1831 },
+            { mach: 1.80, cd: 0.1728 },
+            { mach: 2.00, cd: 0.1629 },
+            { mach: 2.50, cd: 0.1395 },
+            { mach: 3.00, cd: 0.1207 },
+        ];
+
         function airDensity(env) {
             const T = env.temperature + 273.15;
             const p = env.pressure * 100;
@@ -759,26 +813,34 @@
                 : profile.bulletMass / 1000;
         }
 
-        function interpolateDrag(mach) {
-            if (mach <= G1_TABLE[0].mach) return G1_TABLE[0].cd;
-            for (let i = 0; i < G1_TABLE.length - 1; i++) {
-                const a = G1_TABLE[i], b = G1_TABLE[i + 1];
+        function interpolateDrag(mach, table) {
+            if (mach <= table[0].mach) return table[0].cd;
+            for (let i = 0; i < table.length - 1; i++) {
+                const a = table[i], b = table[i + 1];
                 if (mach >= a.mach && mach <= b.mach) {
                     const t = (mach - a.mach) / (b.mach - a.mach);
                     return a.cd + t * (b.cd - a.cd);
                 }
             }
-            return G1_TABLE[G1_TABLE.length - 1].cd;
+            return table[table.length - 1].cd;
         }
 
         function windCrossComponent(wind) {
             return wind.speed * Math.sin((wind.directionClock / 6) * Math.PI);
         }
 
-        function dragAcceleration(velocity, bc, mach, rho) {
-            const cd = interpolateDrag(mach);
+        function dragAcceleration(velocity, bc, mach, rho, table) {
+            const cd = interpolateDrag(mach, table);
             const bcSI = bc * BC_CONVERSION;
             return 0.5 * rho * cd * velocity * velocity / bcSI;
+        }
+
+        function activeBC(profile) {
+            return profile.preferredBC === 'G7' ? profile.bcG7 : profile.bcG1;
+        }
+
+        function activeDragTable(profile) {
+            return profile.preferredBC === 'G7' ? G7_TABLE : G1_TABLE;
         }
 
         function rk4Step(state, dt, deriv) {
@@ -802,12 +864,14 @@
                 profile.muzzleVelocity * Math.cos(angle),
                 profile.muzzleVelocity * Math.sin(angle),
             ];
+            const bc = activeBC(profile);
+            const dragTable = activeDragTable(profile);
             while (state[0] < targetDist) {
                 state = rk4Step(state, dt, (s) => {
                     const vx = s[2], vy = s[3];
                     const v = Math.sqrt(vx * vx + vy * vy);
                     if (v < 1) return [vx, vy, 0, -GRAVITY];
-                    const drag = dragAcceleration(v, profile.bcG1, v / sound, rho);
+                    const drag = dragAcceleration(v, bc, v / sound, rho, dragTable);
                     return [vx, vy, -drag * vx / v, -GRAVITY - drag * vy / v];
                 });
             }
@@ -842,6 +906,8 @@
             const table = [];
             let prevState = state, prevTof = 0;
 
+            const bc = activeBC(profile);
+            const dragTable = activeDragTable(profile);
             while (state[0] < MAX_DISTANCE) {
                 prevState = state;
                 prevTof = tof;
@@ -849,7 +915,7 @@
                     const vx = s[2], vy = s[3];
                     const v = Math.sqrt(vx * vx + vy * vy);
                     if (v < 1) return [vx, vy, 0, -GRAVITY];
-                    const drag = dragAcceleration(v, profile.bcG1, v / sound, rho);
+                    const drag = dragAcceleration(v, bc, v / sound, rho, dragTable);
                     return [vx, vy, -drag * vx / v, -GRAVITY - drag * vy / v];
                 });
                 tof += dt;
@@ -922,7 +988,7 @@
                     bulletType: 'HPBT Match',
                     bulletMass: 140,
                     massUnit: 'gr',
-                    bcG1: 0.585,
+                    bcG1: 0.585, bcG7: 0.301, preferredBC: 'G7',
                     muzzleVelocity: 820,
                     scopeHeight: 5.0,
                     zeroRange: 100,
@@ -935,7 +1001,7 @@
                     bulletType: 'SMK',
                     bulletMass: 175,
                     massUnit: 'gr',
-                    bcG1: 0.505,
+                    bcG1: 0.505, bcG7: 0.258, preferredBC: 'G7',
                     muzzleVelocity: 780,
                     scopeHeight: 5.0,
                     zeroRange: 100,
@@ -948,7 +1014,7 @@
                     bulletType: 'HPBT',
                     bulletMass: 77,
                     massUnit: 'gr',
-                    bcG1: 0.372,
+                    bcG1: 0.372, bcG7: 0.191, preferredBC: 'G1',
                     muzzleVelocity: 840,
                     scopeHeight: 5.0,
                     zeroRange: 100,
@@ -1047,7 +1113,9 @@
                 document.getElementById('profile-bullet-type').value  = p.bulletType;
                 document.getElementById('profile-bullet-mass').value  = p.bulletMass;
                 document.getElementById('profile-mass-unit').value    = p.massUnit;
-                document.getElementById('profile-bc').value           = p.bcG1;
+                document.getElementById('profile-bc-g1').value        = p.bcG1 || '';
+                document.getElementById('profile-bc-g7').value        = p.bcG7 || '';
+                document.getElementById('prefer-' + (p.preferredBC || 'G1').toLowerCase()).checked = true;
                 document.getElementById('profile-velocity').value     = p.muzzleVelocity;
                 document.getElementById('profile-scope-height').value = p.scopeHeight;
                 document.getElementById('profile-zero-range').value   = p.zeroRange;
@@ -1057,7 +1125,9 @@
                 document.getElementById('profile-caliber').value      = '';
                 document.getElementById('profile-bullet-type').value  = '';
                 document.getElementById('profile-bullet-mass').value  = '';
-                document.getElementById('profile-bc').value           = '';
+                document.getElementById('profile-bc-g1').value        = '';
+                document.getElementById('profile-bc-g7').value        = '';
+                document.getElementById('prefer-g1').checked          = true;
                 document.getElementById('profile-velocity').value     = '';
                 document.getElementById('profile-scope-height').value = '5.0';
                 document.getElementById('profile-zero-range').value   = '100';
@@ -1077,14 +1147,17 @@
                 bulletType:    document.getElementById('profile-bullet-type').value,
                 bulletMass:    parseFloat(document.getElementById('profile-bullet-mass').value),
                 massUnit:      document.getElementById('profile-mass-unit').value,
-                bcG1:          parseFloat(document.getElementById('profile-bc').value),
+                bcG1:          parseFloat(document.getElementById('profile-bc-g1').value) || null,
+                bcG7:          parseFloat(document.getElementById('profile-bc-g7').value) || null,
+                preferredBC:   document.querySelector('input[name="preferred-bc"]:checked').value,
                 muzzleVelocity: parseFloat(document.getElementById('profile-velocity').value),
                 scopeHeight:   parseFloat(document.getElementById('profile-scope-height').value),
                 zeroRange:     parseFloat(document.getElementById('profile-zero-range').value),
                 clickUnit:     document.getElementById('profile-click-unit').value
             };
 
-            if (!data.name || !data.bcG1 || !data.muzzleVelocity) {
+            const preferredBcValue = data.preferredBC === 'G7' ? data.bcG7 : data.bcG1;
+            if (!data.name || !preferredBcValue || !data.muzzleVelocity) {
                 alert('Please fill in all required fields');
                 return;
             }
@@ -1110,11 +1183,17 @@
         function viewProfile(id, event) {
             event.stopPropagation();
             const p = profiles.find(x => x.id === id);
+            const preferred = p.preferredBC || 'G1';
             document.getElementById('view-profile-name').textContent  = p.name;
             document.getElementById('view-caliber').textContent       = p.caliber || '—';
             document.getElementById('view-bullet-type').textContent   = p.bulletType || '—';
             document.getElementById('view-bullet-mass').textContent   = `${p.bulletMass} ${p.massUnit}`;
-            document.getElementById('view-bc').textContent            = p.bcG1;
+            document.getElementById('view-bc-g1').textContent         = p.bcG1 || '—';
+            document.getElementById('view-bc-g7').textContent         = p.bcG7 || '—';
+            document.getElementById('view-bc-g1-label').textContent   = preferred === 'G1' ? 'BC G1 ★' : 'BC G1';
+            document.getElementById('view-bc-g7-label').textContent   = preferred === 'G7' ? 'BC G7 ★' : 'BC G7';
+            document.getElementById('view-bc-g1-label').style.color   = preferred === 'G1' ? '#4a9eda' : '';
+            document.getElementById('view-bc-g7-label').style.color   = preferred === 'G7' ? '#4a9eda' : '';
             document.getElementById('view-velocity').textContent      = `${p.muzzleVelocity} m/s`;
             document.getElementById('view-scope-height').textContent  = `${p.scopeHeight} cm`;
             document.getElementById('view-zero-range').textContent    = `${p.zeroRange} m`;
