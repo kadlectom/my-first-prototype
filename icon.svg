@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="80" fill="#1a3a2a"/>
+  <!-- Crosshair -->
+  <circle cx="256" cy="256" r="120" fill="none" stroke="#a0c4e8" stroke-width="16"/>
+  <circle cx="256" cy="256" r="60" fill="none" stroke="#a0c4e8" stroke-width="10"/>
+  <circle cx="256" cy="256" r="8" fill="#a0c4e8"/>
+  <!-- Horizontal line -->
+  <line x1="96" y1="256" x2="180" y2="256" stroke="#a0c4e8" stroke-width="12" stroke-linecap="round"/>
+  <line x1="332" y1="256" x2="416" y2="256" stroke="#a0c4e8" stroke-width="12" stroke-linecap="round"/>
+  <!-- Vertical line -->
+  <line x1="256" y1="96" x2="256" y2="180" stroke="#a0c4e8" stroke-width="12" stroke-linecap="round"/>
+  <line x1="256" y1="332" x2="256" y2="416" stroke="#a0c4e8" stroke-width="12" stroke-linecap="round"/>
+</svg>
